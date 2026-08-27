@@ -2,7 +2,7 @@
   <p>
       <img width="100%" src="./docs/images/Banner.png" alt="PaddleOCR Banner">
   </p>
-
+ㅁㅁㅁ
 English | [简体中文](./readme/README_cn.md) | [繁體中文](./readme/README_tcn.md) | [日本語](./readme/README_ja.md) | [한국어](./readme/README_ko.md) | [Français](./readme/README_fr.md) | [Русский](./readme/README_ru.md) | [Español](./readme/README_es.md) | [العربية](./readme/README_ar.md)
 
 <!-- icon -->
