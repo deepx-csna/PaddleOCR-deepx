@@ -51,23 +51,36 @@ echo "Installing DXRT Python bindings (dx_engine)..."
 echo "========================================"
 # The dx_engine wheels ship with the libdxrt-bin package (deb install) or with the
 # dx_rt source tree (source build, common on aarch64 boards such as Radxa Pi).
-# The wheel must match this interpreter and this architecture.
-PY_TAG="cp$(python3 -c 'import sys; print(f"{sys.version_info.major}{sys.version_info.minor}")')"
-DXRT_WHEEL_GLOB="dx_engine-*-${PY_TAG}-*${ARCH}.whl"
-DXRT_WHEEL=$(ls /usr/share/libdxrt-bin/python/${DXRT_WHEEL_GLOB} \
-                "${DXRT_DIR:-$HOME/dx_rt}"/python_package/${DXRT_WHEEL_GLOB} \
-                2>/dev/null | head -n 1)
+# Install through .venv/bin/pip: a system pip refuses on Debian/Ubuntu with
+# "externally-managed-environment" (PEP 668).
+VENV_PY="$REPO_ROOT/.venv/bin/python"
+PY_TAG="cp$("$VENV_PY" -c 'import sys; print(f"{sys.version_info.major}{sys.version_info.minor}")')"
+DXRT_WHEEL_DIRS=(
+    "/usr/share/libdxrt-bin/python"
+    "/usr/local/share/libdxrt-bin/python"
+    "${DXRT_DIR:-$HOME/dx_rt}/python_package"
+)
 
-if python3 -c 'import dx_engine' 2>/dev/null; then
-    echo "dx_engine is already importable in this environment. Skipping."
+# Prefer a wheel tagged for this architecture, fall back to any wheel for this interpreter.
+DXRT_WHEEL=""
+for glob in "dx_engine-*-${PY_TAG}-*${ARCH}.whl" "dx_engine-*-${PY_TAG}-*.whl"; do
+    for dir in "${DXRT_WHEEL_DIRS[@]}"; do
+        DXRT_WHEEL=$(ls ${dir}/${glob} 2>/dev/null | head -n 1)
+        [ -n "${DXRT_WHEEL}" ] && break 2
+    done
+done
+
+if "$VENV_PY" -c 'import dx_engine' 2>/dev/null; then
+    echo "dx_engine is already importable in .venv. Skipping."
 elif [ -n "${DXRT_WHEEL}" ]; then
     # Do not abort the whole setup (set -e) if this one install fails.
-    pip install "${DXRT_WHEEL}" || echo "Warning: failed to install $(basename "${DXRT_WHEEL}")."
+    "$REPO_ROOT/.venv/bin/pip" install "${DXRT_WHEEL}" \
+        || echo "Warning: failed to install $(basename "${DXRT_WHEEL}")."
 else
     echo "========================================"
-    echo "NOTE: no ${DXRT_WHEEL_GLOB} found. Install dx_engine manually:"
-    echo "pip install /usr/share/libdxrt-bin/python/${DXRT_WHEEL_GLOB}"
-    echo "  (or from a dx_rt source tree: \$DXRT_DIR/python_package)"
+    echo "NOTE: no dx_engine-*-${PY_TAG}-*.whl found. Looked in:"
+    printf '  %s\n' "${DXRT_WHEEL_DIRS[@]}"
+    echo "Install DXRT (libdxrt-bin), or set DXRT_DIR to your dx_rt source tree, then re-run this script."
     echo "Demos with a Python NPU backend will not run without dx_engine."
     echo "========================================"
 fi
